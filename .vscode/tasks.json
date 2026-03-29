@@ -1,0 +1,83 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start VerseFlow",
+      "dependsOn": ["Start Audio Engine", "Start App"],
+      "dependsOrder": "sequence",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Audio Engine",
+      "type": "shell",
+      "command": "npm run sidecar:dev",
+      "presentation": {
+        "label": "Audio Engine",
+        "group": "verseflow",
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Starting sidecar",
+          "endsPattern": "Sidecar ready"
+        }
+      }
+    },
+    {
+      "label": "Start App",
+      "type": "shell",
+      "command": "npm run dev",
+      "presentation": {
+        "label": "Electron App",
+        "group": "verseflow",
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "electron-vite",
+          "endsPattern": "ready"
+        }
+      }
+    },
+    {
+      "label": "Run Setup",
+      "type": "shell",
+      "command": "${input:setupCommand}",
+      "presentation": {
+        "label": "Setup",
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "npm run test && npm run test:py",
+      "presentation": {
+        "label": "Tests",
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "setupCommand",
+      "type": "pickString",
+      "description": "Choose your platform",
+      "options": [".\\setup.bat", "bash setup.sh"],
+      "default": ".\\setup.bat"
+    }
+  ]
+}
