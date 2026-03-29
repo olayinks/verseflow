@@ -1,0 +1,15 @@
+{
+  "port": 8765,
+  "whisper_model": "base.en",
+  "whisper_device": "cpu",
+  "audio_device": null,
+  "sample_rate": 16000,
+  "chunk_seconds": 0.5,
+  "bible_index_path": "data/bibles/index.faiss",
+  "bible_meta_path": "data/bibles/meta.json",
+  "lyrics_index_path": "data/lyrics/index.faiss",
+  "lyrics_meta_path": "data/lyrics/meta.json",
+  "semantic_threshold": 0.60,
+  "max_suggestions": 5,
+  "lyrics_enabled": true
+}

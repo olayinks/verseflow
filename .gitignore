@@ -1,0 +1,46 @@
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+out/
+dist/
+build/
+.vite/
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# ── Generated data (rebuilt by setup scripts) ─────────────────────────────────
+# Bible and lyrics FAISS indices are large generated files — run setup to build.
+data/bibles/
+data/models/
+data/lyrics/index.faiss
+data/lyrics/meta.json
+
+# Keep hand-crafted lyric source files
+!data/lyrics/source/
+
+# ── Logs and temp ─────────────────────────────────────────────────────────────
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+
+# ── electron-builder ──────────────────────────────────────────────────────────
+dist-electron/
