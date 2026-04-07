@@ -39,6 +39,10 @@ extraResources:
   - from: "dist/verseflow-sidecar"
     to: "verseflow-sidecar"
     filter: ["**"]
+  # Training script — runs via system Python, not the bundled sidecar binary.
+  # System Python + pip install -r requirements-training.txt is required to use it.
+  - from: "sidecar/training/trainer.py"
+    to: "trainer.py"
 
 # ── Windows ───────────────────────────────────────────────────────────────────
 

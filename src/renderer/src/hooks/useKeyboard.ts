@@ -24,10 +24,14 @@ export function useKeyboard(): void {
         setActiveSuggestion,
         settingsPanelOpen,
         setSettingsPanelOpen,
+        helpPanelOpen,
+        setHelpPanelOpen,
       } = useAppStore.getState()
 
       if (e.key === 'Escape') {
-        if (settingsPanelOpen) {
+        if (helpPanelOpen) {
+          setHelpPanelOpen(false)
+        } else if (settingsPanelOpen) {
           setSettingsPanelOpen(false)
         } else {
           setActiveSuggestion(null)
@@ -35,8 +39,8 @@ export function useKeyboard(): void {
         return
       }
 
-      // Remaining shortcuts only apply when settings panel is closed.
-      if (settingsPanelOpen || suggestions.length === 0) return
+      // Remaining shortcuts only apply when no panel is open.
+      if (settingsPanelOpen || helpPanelOpen || suggestions.length === 0) return
 
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()

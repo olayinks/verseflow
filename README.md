@@ -111,21 +111,39 @@ The VerseFlow overlay window will appear on your screen.
 
 1. **Settings (first launch):** The settings panel opens automatically. Choose your presentation software from the dropdown and browse to its location on your computer.
 
-2. **Start listening:** Click the **Listen** button (or press `Space`). VerseFlow will start listening to your microphone.
+2. **Choose a capture mode:** Use the **Sermon / Worship** toggle below the status bar to switch modes.
+   - **Sermon** — optimised for spoken word. Longer audio windows for better word accuracy, prioritises Bible verse detection.
+   - **Worship** — optimised for singing. Shorter windows for faster response, prioritises song lyric matching.
 
-3. **Suggestions appear automatically:** As the speaker talks, Bible verses and song lyrics are suggested in real time in the panel below the transcript.
+3. **Start listening:** Click the **Listen** button (or press `Space`). VerseFlow will start listening to your microphone.
 
-4. **Send to presentation:** Click any suggestion card (or use arrow keys to select, then press `Enter`) to send it to your presentation software.
+4. **Suggestions appear automatically:** As the speaker talks, Bible verses and song lyrics are suggested in real time in the panel below the transcript.
 
-5. **Stop listening:** Click the **Stop** button (or press `Space` again).
+5. **Send to presentation:** Click any suggestion card (or use arrow keys to select, then press `Enter`) to send it to your presentation software.
+
+6. **Stop listening:** Click the **Stop** button (or press `Space` again).
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
+| `Space` | Start / stop listening |
 | `↑` / `↓` | Move between suggestions |
 | `Enter` | Send selected suggestion to presentation |
 | `Escape` | Deselect suggestion / close settings |
+
+### Testing Your Audio Input
+
+Before a service, verify VerseFlow is capturing the right microphone:
+
+1. Open **Settings** (gear icon, top right)
+2. Select your audio input device from the dropdown
+3. Click **Test mic** — a level meter appears showing real-time audio
+4. Speak into the microphone and watch the bar move
+5. Use the **Monitor vol** slider to hear your own audio played back through your speakers/headphones
+6. Click **Stop test** when done
+
+> If you are using speakers (not headphones), keep the monitor volume low to avoid feedback.
 
 ---
 
@@ -140,6 +158,53 @@ The VerseFlow overlay window will appear on your screen.
 | OpenLP | Windows & macOS |
 
 > VerseFlow works by typing into the presentation software's search box. The presentation software must be open and have slides/songs already in its library.
+
+---
+
+---
+
+## Speaker Training (Improve Accuracy for Your Speaker)
+
+Out of the box VerseFlow uses the `small.en` Whisper model with biblical vocabulary hints. For speakers with strong accents or unusual pronunciation of scripture terms, you can fine-tune the model on their voice in a few steps.
+
+### How training works in packaged vs development builds
+
+VerseFlow's normal audio engine runs as a self-contained binary — no Python required. Training is different: it uses your **system Python** and several large ML packages that are not bundled with the app (they would add 2–4 GB to the installer and most users never need them).
+
+| | Normal operation | Speaker training |
+|---|---|---|
+| Python required? | No — bundled binary | Yes — system Python 3.11+ |
+| Extra packages? | No | Yes — see below |
+| Works in packaged app? | Yes | Yes, once packages are installed |
+
+### Step 1 — Install training dependencies (once)
+
+```
+pip install -r sidecar/requirements-training.txt
+```
+
+If training packages are missing when you click Train, the app will display an error with this exact command rather than failing silently.
+
+> A GPU (NVIDIA with CUDA) is strongly recommended. Training on CPU works but takes 30–60 minutes. With a GPU it finishes in under 5 minutes.
+
+### Step 2 — Collect voice samples (in the app)
+
+1. Open **Settings → Speaker Training**
+2. Click **Record sample** and speak a Bible verse clearly
+3. Click **Stop recording**, then type exactly what you said into the transcript box
+4. Click **Save sample**
+5. Repeat for at least **10 samples** — vary the books, chapters and speaking pace
+
+**Tips for good samples:**
+- Use a mix of short references ("John 3:16") and longer passages
+- Include book names that are hard to pronounce (Deuteronomy, Thessalonians, Habakkuk)
+- Record in the same room and with the same microphone you use during services
+
+### Step 3 — Train the model
+
+Once 10 or more samples are saved, a **Train** button appears in the settings panel. Click it — training runs in the background and a progress bar updates as it goes.
+
+When complete, the fine-tuned model is saved to `data/models/custom-whisper-ct2/` and VerseFlow automatically uses it on the next sidecar restart.
 
 ---
 
@@ -165,7 +230,13 @@ npm run scripts:build-lyrics
 → Make sure you ran both terminal commands in Step 7.
 
 **No suggestions are appearing**
-→ Check that your microphone is selected in Settings and that the audio engine terminal shows activity.
+→ Check that your microphone is selected in Settings and use **Test mic** to confirm audio is being captured. Also check that the audio engine terminal shows activity.
+
+**Suggestions seem unrelated to what was said**
+→ Try lowering the Semantic Threshold slider in Settings (towards "Broad"). If the speaker has a strong accent, collect voice samples and run Speaker Training.
+
+**Training fails with a missing module error**
+→ Run `pip install -r sidecar/requirements-training.txt` and try again.
 
 **ProPresenter / PowerPoint doesn't respond**
 → Make sure the presentation software is open and focused before clicking Send. The app needs accessibility permissions on macOS — go to System Settings → Privacy & Security → Accessibility.

@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type AppSettings, type AudioDevice, type AppLaunchStatus, type Suggestion, type TranscriptPayload } from '../shared/types'
+import { IPC, type AppSettings, type AudioDevice, type AppLaunchStatus, type Suggestion, type TranscriptPayload, type CaptureMode, type TrainingStatus } from '../shared/types'
 
 // ---------------------------------------------------------------------------
 // Typed event-listener helpers
@@ -33,6 +33,8 @@ const verseflowAPI = {
 
   stopListening: (): Promise<void> => ipcRenderer.invoke(IPC.STOP_LISTENING),
 
+  setMode: (mode: CaptureMode): Promise<void> => ipcRenderer.invoke(IPC.SET_MODE, mode),
+
   // ── Presentation driver ──────────────────────────────────────────────────
 
   sendToPresentation: (text: string): Promise<void> =>
@@ -56,6 +58,20 @@ const verseflowAPI = {
   closeWindow: (): void => ipcRenderer.send('window:close'),
 
   minimizeWindow: (): void => ipcRenderer.send('window:minimize'),
+
+  // ── Speaker training ─────────────────────────────────────────────────────
+
+  saveSample: (audio: ArrayBuffer, transcript: string): Promise<void> =>
+    ipcRenderer.invoke(IPC.TRAINING_SAVE_SAMPLE, audio, transcript),
+
+  getTrainingStatus: (): Promise<TrainingStatus> =>
+    ipcRenderer.invoke(IPC.TRAINING_GET_STATUS),
+
+  startTraining: (): Promise<void> =>
+    ipcRenderer.invoke(IPC.TRAINING_START),
+
+  onTrainingProgress: (cb: (status: TrainingStatus) => void): Unsubscribe =>
+    onEvent(IPC.TRAINING_ON_PROGRESS, cb),
 
   // ── Push events (main → renderer) ────────────────────────────────────────
 

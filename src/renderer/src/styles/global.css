@@ -78,6 +78,14 @@
   --blur-glass: blur(20px);
 }
 
+/* ── Settings panel backdrop ────────────────────────────────────────────────── */
+
+.settings-panel {
+  background: var(--color-glass-bg);
+  -webkit-backdrop-filter: var(--blur-glass);
+  backdrop-filter: var(--blur-glass);
+}
+
 /* ── Scrollbar styling ──────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {

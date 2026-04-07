@@ -188,6 +188,10 @@ export class SidecarManager {
     this.send({ type: 'status', payload: { command: 'stop' } })
   }
 
+  setMode(mode: string): void {
+    this.send({ type: 'status', payload: { command: `set_mode:${mode}` } })
+  }
+
   // ── Teardown ──────────────────────────────────────────────────────────────
 
   shutdown(): void {

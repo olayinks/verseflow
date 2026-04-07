@@ -17,7 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback } from 'react'
-import { Minus, Settings, X } from 'lucide-react'
+import { HelpCircle, Minus, Settings, X } from 'lucide-react'
 import { useSidecar } from './hooks/useSidecar'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useAppStore } from './store'
@@ -25,6 +25,7 @@ import { StatusBar } from './components/StatusBar'
 import { TranscriptPane } from './components/TranscriptPane'
 import { SuggestionList } from './components/SuggestionList'
 import { SettingsPanel } from './components/SettingsPanel'
+import { HelpPanel } from './components/HelpPanel'
 
 // Detect Windows — show custom close/minimize buttons on frameless window.
 // macOS renders native traffic lights automatically.
@@ -32,7 +33,7 @@ const isWindows = navigator.userAgent.includes('Windows')
 
 export default function App(): React.ReactElement {
   const { startListening, stopListening } = useSidecar()
-  const { setSettingsPanelOpen } = useAppStore()
+  const { setSettingsPanelOpen, setHelpPanelOpen } = useAppStore()
 
   useKeyboard()
 
@@ -68,6 +69,15 @@ export default function App(): React.ReactElement {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <button
+            type="button"
+            onClick={() => setHelpPanelOpen(true)}
+            className={iconBtnCls}
+            aria-label="Open help"
+          >
+            <HelpCircle size={13} />
+          </button>
+          <button
+            type="button"
             onClick={() => setSettingsPanelOpen(true)}
             className={iconBtnCls}
             aria-label="Open settings"
@@ -110,6 +120,9 @@ export default function App(): React.ReactElement {
 
       {/* ── Settings panel (absolute overlay) ───────────────────────────── */}
       <SettingsPanel />
+
+      {/* ── Help panel (absolute overlay) ───────────────────────────────── */}
+      <HelpPanel />
     </div>
   )
 }

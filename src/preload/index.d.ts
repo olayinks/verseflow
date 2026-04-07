@@ -5,13 +5,14 @@
 // the renderer without importing Electron/Node types there.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { AppSettings, AudioDevice, AppLaunchStatus, Suggestion, TranscriptPayload } from '../shared/types'
+import type { AppSettings, AudioDevice, AppLaunchStatus, Suggestion, TranscriptPayload, CaptureMode, TrainingStatus } from '../shared/types'
 
 type Unsubscribe = () => void
 
 export interface VerseFlowAPI {
   startListening: () => Promise<void>
   stopListening: () => Promise<void>
+  setMode: (mode: CaptureMode) => Promise<void>
   sendToPresentation: (text: string) => Promise<void>
   getSettings: () => Promise<AppSettings>
   setSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>
@@ -20,6 +21,10 @@ export interface VerseFlowAPI {
   checkAndLaunchApp: () => Promise<AppLaunchStatus>
   closeWindow: () => void
   minimizeWindow: () => void
+  saveSample: (audio: ArrayBuffer, transcript: string) => Promise<void>
+  getTrainingStatus: () => Promise<TrainingStatus>
+  startTraining: () => Promise<void>
+  onTrainingProgress: (cb: (status: TrainingStatus) => void) => Unsubscribe
   onTranscript: (cb: (payload: TranscriptPayload) => void) => Unsubscribe
   onSuggestion: (cb: (suggestion: Suggestion) => void) => Unsubscribe
   onStatus: (cb: (status: { connected: boolean; message: string }) => void) => Unsubscribe

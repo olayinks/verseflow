@@ -80,10 +80,30 @@ export type Suggestion = VerseSuggestion | LyricSuggestion
 // IPC channel names (keep in sync with preload/index.ts)
 // ---------------------------------------------------------------------------
 
+export type CaptureMode = 'sermon' | 'worship'
+
+// ---------------------------------------------------------------------------
+// Speaker training
+// ---------------------------------------------------------------------------
+
+export interface TrainingStatus {
+  sampleCount: number
+  isTraining: boolean
+  progress: number        // 0–100
+  hasCustomModel: boolean
+  lastError: string | null
+}
+
 export const IPC = {
   // Renderer → Main
   START_LISTENING: 'sidecar:start-listening',
   STOP_LISTENING: 'sidecar:stop-listening',
+  SET_MODE: 'sidecar:set-mode',
+  TRAINING_SAVE_SAMPLE: 'training:save-sample',
+  TRAINING_GET_STATUS: 'training:get-status',
+  TRAINING_START: 'training:start',
+  // Main → Renderer (push)
+  TRAINING_ON_PROGRESS: 'training:on-progress',
   SEND_TO_PRESENTATION: 'presentation:send',
   GET_SETTINGS: 'settings:get',
   SET_SETTINGS: 'settings:set',
@@ -153,7 +173,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   presentationAppPath: '',
   translations: ['KJV'],
   maxSuggestions: 5,
-  semanticThreshold: 0.6,
+  semanticThreshold: 0.45,
   lyricsEnabled: true,
   audioDevice: '',
   setupCompleted: false,
