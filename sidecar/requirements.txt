@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# sidecar/requirements.txt
+#
+# Install with:  pip install -r requirements.txt
+#
+# Python 3.11+ required (3.12 / 3.13 work fine).
+# For GPU acceleration, install the CUDA-enabled torch BEFORE this file:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── WebSocket server ──────────────────────────────────────────────────────────
+websockets>=13.1
+
+# ── Audio capture ─────────────────────────────────────────────────────────────
+sounddevice>=0.5.1
+numpy>=2.1.1
+
+# ── Speech-to-text (faster-whisper uses CTranslate2 — much faster than OAI Whisper)
+faster-whisper>=1.0.3
+
+# ── Embeddings model (sentence-transformers wraps HuggingFace models locally)
+sentence-transformers>=3.1.1
+
+# ── Vector search ─────────────────────────────────────────────────────────────
+# Note: faiss-cpu < 1.9.0 was never published to PyPI.
+# Swap for faiss-gpu if you have a CUDA-capable GPU.
+faiss-cpu>=1.9.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+rapidfuzz>=3.10.0       # fuzzy string matching for verse reference normalisation
+regex>=2024.9.11        # more powerful regex engine (supports Unicode properties)
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest>=8.0
+pytest-asyncio>=0.24    # async test support for WS integration tests

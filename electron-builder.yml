@@ -1,0 +1,94 @@
+# electron-builder.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Distribution build configuration for VerseFlow.
+#
+# Windows:  npm run dist:win    →  dist/VerseFlow Setup x.x.x.exe  (NSIS installer)
+# macOS:    npm run dist:mac    →  dist/VerseFlow-x.x.x.dmg
+#
+# Prerequisites:
+#   1. Run `pyinstaller sidecar/verseflow_sidecar.spec` so that
+#      dist/verseflow-sidecar(.exe) exists before running electron-builder.
+#   2. Place icon files:
+#        resources/icons/icon.ico    (Windows — 256×256 recommended)
+#        resources/icons/icon.icns   (macOS)
+#        resources/icons/icon.png    (512×512 — used as fallback)
+# ─────────────────────────────────────────────────────────────────────────────
+
+appId: com.verseflow.app
+productName: VerseFlow
+copyright: "Copyright © 2025 VerseFlow"
+
+directories:
+  buildResources: resources
+  output: dist
+
+# Files to include from the electron-vite output.
+files:
+  - out/**/*
+  - "!**/*.map"
+
+# ── Bundled sidecar binary ────────────────────────────────────────────────────
+# PyInstaller produces a single-file executable in dist/.
+# electron-builder copies it into the packaged app's resources/ directory.
+# SidecarManager reads process.resourcesPath to find it at runtime.
+
+extraResources:
+  - from: "dist/verseflow-sidecar.exe"
+    to: "verseflow-sidecar.exe"
+    filter: ["**"]
+  - from: "dist/verseflow-sidecar"
+    to: "verseflow-sidecar"
+    filter: ["**"]
+  # Training script — runs via system Python, not the bundled sidecar binary.
+  # System Python + pip install -r requirements-training.txt is required to use it.
+  - from: "sidecar/training/trainer.py"
+    to: "trainer.py"
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+
+win:
+  icon: resources/icons/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: "${productName} Setup ${version}.${ext}"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: VerseFlow
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+
+mac:
+  icon: resources/icons/icon.icns
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  # Hardened runtime required for notarization.
+  hardenedRuntime: true
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+
+dmg:
+  title: VerseFlow
+  background: resources/dmg-background.png
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ── Auto-update ───────────────────────────────────────────────────────────────
+# Uncomment once a publish target (GitHub Releases, S3, etc.) is configured.
+
+# publish:
+#   - provider: github
+#     owner: your-org
+#     repo: verseflow

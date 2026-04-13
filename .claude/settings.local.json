@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_kjv.json\" -o \"c:/Users/moses/verseflow/data/bibles/kjv_test.json\")",
+      "Bash(py -3.13 -c \":*)",
+      "Bash(npx tsc:*)",
+      "Bash(py -3.13 -m pytest sidecar/tests/test_verse_detector.py -v)",
+      "Bash(py -3.13 -m pytest \"c:/Users/moses/verseflow/sidecar/tests/test_verse_detector.py\" -v)",
+      "Bash(cmd /c \"tasklist /FI \"\"PID eq 26480\"\" /FO CSV\")",
+      "Bash(cmd /c \"tasklist /FI \"\"PID eq 26480\"\" /FO LIST\")",
+      "WebFetch(domain:support.renewedvision.com)",
+      "Bash(python -c \"import sounddevice; print\\(''sounddevice ok''\\)\")",
+      "Bash(python -c \"import faster_whisper; print\\(''faster_whisper ok''\\)\")"
+    ]
+  }
+}

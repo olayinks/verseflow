@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# sidecar/requirements-training.txt
+#
+# Extra dependencies for speaker fine-tuning.  Install AFTER requirements.txt:
+#
+#   pip install -r requirements.txt
+#   pip install -r requirements-training.txt
+#
+# GPU strongly recommended.  Install CUDA torch first if available:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# ─────────────────────────────────────────────────────────────────────────────
+
+# HuggingFace fine-tuning stack
+torch>=2.0.0
+transformers>=4.40.0
+datasets>=2.20.0
+accelerate>=0.30.0
+
+# Audio I/O and resampling
+soundfile>=0.12.1
+librosa>=0.10.0
+
+# Model conversion: HuggingFace → CTranslate2 (used by faster-whisper)
+ctranslate2>=4.0.0

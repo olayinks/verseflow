@@ -1,0 +1,9 @@
+# Generated index files — re-create by running: npm run scripts:build-lyrics
+*.faiss
+meta.json
+
+# Copyrighted lyric source files must NOT be committed to public repos.
+# Only public-domain samples (amazing_grace.txt, how_great_thou_art.txt) are tracked.
+source/*.txt
+!source/amazing_grace.txt
+!source/how_great_thou_art.txt
