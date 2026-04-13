@@ -79,6 +79,10 @@ export function registerIpcHandlers({ mainWindow, sidecarManager }: HandlerDeps)
     sidecarManager.setMode(mode)
   })
 
+  ipcMain.handle(IPC.GET_STATUS, async () => {
+    return sidecarManager.getLastStatus()
+  })
+
   // ── Presentation driver ───────────────────────────────────────────────────
 
   ipcMain.handle(IPC.SEND_TO_PRESENTATION, async (_event, text: string) => {

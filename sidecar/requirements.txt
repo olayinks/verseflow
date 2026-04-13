@@ -15,7 +15,13 @@ websockets>=13.1
 sounddevice>=0.5.1
 numpy>=2.1.1
 
-# ── Speech-to-text (faster-whisper uses CTranslate2 — much faster than OAI Whisper)
+# ── Speech-to-text ────────────────────────────────────────────────────────────
+# RealtimeSTT wraps faster-whisper with proper Silero VAD-driven utterance
+# detection — it only runs Whisper when a speaker pauses, so you always get
+# complete phrases instead of mid-sentence cuts.
+# faster-whisper is a transitive dependency of RealtimeSTT; pinned here for
+# visibility in case a manual override is ever needed.
+RealtimeSTT>=0.3.104
 faster-whisper>=1.0.3
 
 # ── Embeddings model (sentence-transformers wraps HuggingFace models locally)

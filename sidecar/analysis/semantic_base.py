@@ -13,7 +13,10 @@ from typing import Any
 
 log = logging.getLogger("verseflow.semantic")
 
-DEFAULT_MODEL = "all-MiniLM-L6-v2"
+# multi-qa-MiniLM-L6-cos-v1 is trained for asymmetric semantic search:
+# query (speech) vs document (Bible verse / lyric). Much better than the
+# general-purpose all-MiniLM-L6-v2 for retrieval tasks.
+DEFAULT_MODEL = "multi-qa-MiniLM-L6-cos-v1"
 
 
 def make_suggestion_id(prefix: str, key: str) -> str:

@@ -33,6 +33,10 @@ export class SidecarManager {
   private reconnectAttempts = 0
   private shuttingDown = false
   private port: number = DEFAULT_SETTINGS.sidecarPort
+  // Last status payload received from the sidecar (or pushed internally).
+  // Re-sent to the renderer when it requests it on mount, avoiding the race
+  // where status messages arrive before the renderer's IPC listeners register.
+  private _lastStatus: Record<string, unknown> | null = null
 
   // ── Spawn ─────────────────────────────────────────────────────────────────
 
@@ -160,6 +164,7 @@ export class SidecarManager {
         win.webContents.send(IPC.ON_SUGGESTION, msg.payload)
         break
       case 'status':
+        this._lastStatus = msg.payload as Record<string, unknown>
         win.webContents.send(IPC.ON_STATUS, msg.payload)
         break
       case 'error':
@@ -205,7 +210,13 @@ export class SidecarManager {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private pushStatus(win: BrowserWindow, connected: boolean, message: string): void {
-    win.webContents.send(IPC.ON_STATUS, { connected, message })
+    const payload = { connected, message }
+    this._lastStatus = payload
+    win.webContents.send(IPC.ON_STATUS, payload)
+  }
+
+  getLastStatus(): Record<string, unknown> | null {
+    return this._lastStatus
   }
 
   setPort(port: number): void {

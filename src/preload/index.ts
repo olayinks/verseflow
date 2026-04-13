@@ -86,6 +86,9 @@ const verseflowAPI = {
 
   onError: (cb: (err: { message: string }) => void): Unsubscribe =>
     onEvent(IPC.ON_ERROR, cb),
+
+  getStatus: (): Promise<Record<string, unknown> | null> =>
+    ipcRenderer.invoke(IPC.GET_STATUS),
 }
 
 contextBridge.exposeInMainWorld('verseflow', verseflowAPI)

@@ -94,14 +94,13 @@ You need two terminals running at the same time.
 ```
 npm run sidecar:dev
 ```
-Wait until you see: `Sidecar ready — waiting for Electron to connect`
 
 **Terminal 2 — Start the app:**
 ```
 npm run dev
 ```
 
-The VerseFlow overlay window will appear on your screen.
+The VerseFlow overlay window will appear. A loading indicator shows while the AI engines initialise — the **Listen** button enables automatically once they are ready (typically 10–30 seconds on first launch).
 
 > **Shortcut:** In VS Code, go to **Terminal → New Terminal** to open a second terminal alongside the first.
 
@@ -119,7 +118,7 @@ The VerseFlow overlay window will appear on your screen.
 
 4. **Suggestions appear automatically:** As the speaker talks, Bible verses and song lyrics are suggested in real time in the panel below the transcript.
 
-5. **Send to presentation:** Click any suggestion card (or use arrow keys to select, then press `Enter`) to send it to your presentation software.
+5. **Send to presentation:** Hover over any suggestion card and click the **Send** button that appears — or use arrow keys to select a card and press `Enter`. You don't need to expand the card first.
 
 6. **Stop listening:** Click the **Stop** button (or press `Space` again).
 
@@ -233,7 +232,10 @@ npm run scripts:build-lyrics
 → Check that your microphone is selected in Settings and use **Test mic** to confirm audio is being captured. Also check that the audio engine terminal shows activity.
 
 **Suggestions seem unrelated to what was said**
-→ Try lowering the Semantic Threshold slider in Settings (towards "Broad"). If the speaker has a strong accent, collect voice samples and run Speaker Training.
+→ Try lowering the Semantic Threshold slider in Settings (towards "Broad"). The semantic search uses `multi-qa-MiniLM-L6-cos-v1`, a retrieval-optimised model — if you rebuilt the index with the old `all-MiniLM-L6-v2` model, re-run `npm run scripts:build-bible` to get the matching index. If the speaker has a strong accent, collect voice samples and run Speaker Training.
+
+**The Listen button stays greyed out**
+→ The engines are still loading. Watch the status bar — the amber pulse and loading message will clear when ready. If it stays grey indefinitely, check the sidecar terminal for errors.
 
 **Training fails with a missing module error**
 → Run `pip install -r sidecar/requirements-training.txt` and try again.

@@ -1,37 +1,45 @@
 """
 sidecar/stt/engine.py
 ───────────────────────────────────────────────────────────────────────────────
-Speech-to-text engine built on faster-whisper.
+Real-time speech-to-text engine built on RealtimeSTT (which uses faster-whisper
+internally but adds proper VAD-driven utterance detection).
 
-Why faster-whisper?
-  - 4× faster than openai/whisper on CPU (uses CTranslate2 under the hood).
-  - Supports int8 quantisation — runs well even on a modest laptop.
-  - Streaming-friendly: we can transcribe short chunks and accumulate context.
+Why RealtimeSTT over raw faster-whisper chunking?
+  The core problem with fixed-time chunking is that Whisper was trained on 30 s
+  clips — it hallucates on short clips and cuts sentences mid-phrase when the
+  chunk boundary doesn't align with a pause.  RealtimeSTT solves this with:
 
-Model sizes (base.en is the recommended dev default):
-  tiny.en  ~ 75 MB  — very fast, lower accuracy
-  base.en  ~ 140 MB — good balance for real-time use
-  small.en ~ 460 MB — better accuracy, still real-time on modern CPUs
-  medium.en~ 1.5 GB — best quality, may lag on CPU-only machines
+    1. Silero VAD + WebRTC VAD — detects actual speech endpoints, so Whisper
+       only runs on complete utterances, never mid-word.
+    2. Dual-model architecture — a tiny.en model emits partial updates every
+       ~150 ms for display; the main model transcribes the full utterance once
+       the speaker pauses for >= post_speech_silence_duration seconds.
+    3. No manual buffer math — the library handles accumulation internally.
 
-Streaming strategy:
-  We use a "rolling window" approach — each chunk is transcribed independently
-  (faster-whisper has no streaming mode for partial transcripts). A VAD (Voice
-  Activity Detection) pre-pass is used to skip silent frames so we don't waste
-  compute. The full-text accumulation happens in main.py.
+Architecture inside this class:
+  - load()  — creates the AudioToTextRecorder; must receive the running event
+               loop so callbacks can safely enqueue to asyncio from threads.
+  - start() — spins up a daemon thread that calls recorder.text() in a loop.
+               recorder.text() blocks until a complete utterance is ready, then
+               returns the accurate final transcript.
+  - The realtime callback fires on the tiny.en model every 150 ms and pushes
+    partial strings into _partial_queue for live display.
+  - partial_updates() / final_transcripts() are async generators that drain the
+    two queues and yield strings to the asyncio pipeline in main.py.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from typing import TypedDict
+import threading
+from collections.abc import AsyncGenerator
 
-import numpy as np
+log = logging.getLogger("verseflow.stt")
 
 # ── Domain vocabulary ─────────────────────────────────────────────────────────
-# Priming Whisper with biblical vocabulary biases the decoder toward correct
-# spellings of book names and scripture-specific terms regardless of accent.
-# The initial_prompt is treated as prior context before each audio chunk.
+# Passed as initial_prompt to bias Whisper toward correct spellings of Bible
+# book names and sermon vocabulary regardless of speaker accent.
 _BIBLE_PROMPT = (
     "Genesis Exodus Leviticus Numbers Deuteronomy Joshua Judges Ruth Samuel "
     "Kings Chronicles Ezra Nehemiah Esther Job Psalms Proverbs Ecclesiastes "
@@ -44,102 +52,203 @@ _BIBLE_PROMPT = (
     "salvation grace mercy faith righteousness covenant"
 )
 
-# Hotwords give an additional probability boost during beam search for tokens
-# that are likely in a sermon/worship context.
-_HOTWORDS = (
-    "Genesis Exodus Leviticus Numbers Deuteronomy Joshua Judges Psalms "
-    "Proverbs Isaiah Jeremiah Ezekiel Daniel Hosea Habakkuk Zechariah "
-    "Matthew Mark Luke John Romans Corinthians Galatians Ephesians "
-    "Philippians Colossians Thessalonians Hebrews Revelation "
-    "chapter verse scripture gospel"
-)
-
-log = logging.getLogger("verseflow.stt")
-
-
-class TranscriptResult(TypedDict):
-    text: str
-    is_final: bool
-    language: str
-    confidence: float
-
 
 class STTEngine:
+    """
+    Wraps RealtimeSTT's AudioToTextRecorder to provide async generators for
+    partial and final transcripts.
+
+    Usage (in main.py):
+        engine = STTEngine(model_name="base.en", device="cpu")
+        engine.load(asyncio.get_running_loop())
+        engine.start()
+
+        async for text in engine.partial_updates():
+            ...   # live display
+
+        async for text in engine.final_transcripts():
+            ...   # detection pipeline
+    """
+
     def __init__(
         self,
         model_name: str = "base.en",
         device: str = "cpu",
         compute_type: str = "int8",
+        audio_device: int | str | None = None,
     ) -> None:
         self.model_name = model_name
         self.device = device
         self.compute_type = compute_type
-        self._model = None  # Lazy-loaded in load()
+        # RealtimeSTT expects an integer device index; ignore string names.
+        self._input_device: int | None = (
+            audio_device if isinstance(audio_device, int) else None
+        )
+        self._recorder = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._partial_queue: asyncio.Queue[str] = asyncio.Queue()
+        self._final_queue: asyncio.Queue[str] = asyncio.Queue()
+        self._running = False
+        self._thread: threading.Thread | None = None
 
-    def load(self) -> None:
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    def load(self, loop: asyncio.AbstractEventLoop) -> None:
         """
-        Download (if necessary) and load the Whisper model.
-        Called once at startup in a background thread.
-        Models are cached in ~/.cache/huggingface/hub/ by default.
+        Instantiate the AudioToTextRecorder.  Must be called from a thread
+        with access to the running event loop (use asyncio.to_thread or pass
+        the loop explicitly from the async context).
+
+        First-run download sizes (cached in ~/.cache/huggingface/hub/):
+          Silero VAD model  ~  2 MB
+          tiny.en           ~ 75 MB   (real-time partial transcription)
+          base.en           ~140 MB   (accurate final transcription)
+        Subsequent runs load from cache and are much faster.
         """
-        from faster_whisper import WhisperModel  # type: ignore[import]
+        import time
+        from RealtimeSTT import AudioToTextRecorder  # type: ignore[import]
+
+        self._loop = loop
+
+        def _on_partial(text: str) -> None:
+            """Fires every ~150 ms from the tiny.en model — thread-safe push."""
+            if text.strip() and self._loop and not self._loop.is_closed():
+                self._loop.call_soon_threadsafe(
+                    self._partial_queue.put_nowait, text.strip()
+                )
 
         log.info(
-            "Loading Whisper model '%s' on %s (%s)",
-            self.model_name,
-            self.device,
-            self.compute_type,
+            "STT init: main-model=%s  realtime-model=tiny.en  device=%s  compute=%s",
+            self.model_name, self.device, self.compute_type,
         )
-        self._model = WhisperModel(
+        log.info(
+            "  First run will download: Silero VAD (~2 MB), tiny.en (~75 MB), %s (~%s)",
             self.model_name,
+            "140 MB" if self.model_name == "base.en" else
+            "460 MB" if self.model_name == "small.en" else "75 MB",
+        )
+        log.info("  Cached runs skip downloads — check %s", "~/.cache/huggingface/hub/")
+
+        # ── Pre-trust Silero VAD ───────────────────────────────────────────────
+        # RealtimeSTT loads Silero VAD via torch.hub.load(), which on first run
+        # prints an interactive "do you trust this repo? (y/N)" prompt.  Since
+        # the sidecar has no terminal attached, that prompt hangs forever.
+        # Calling torch.hub.load(..., trust_repo=True) here first downloads and
+        # caches the model with trust already given, so RealtimeSTT's call hits
+        # the cache silently on all subsequent loads.
+        log.info("  [1/3] Trusting and caching Silero VAD…")
+        try:
+            import torch
+            torch.hub.load(
+                "snakers4/silero-vad",
+                "silero_vad",
+                trust_repo=True,
+            )
+            log.info("  [1/3] Silero VAD ready")
+        except Exception:
+            log.exception("  [1/3] Silero VAD pre-load failed (RealtimeSTT may still work if cached)")
+
+        log.info("  [2/3] Loading tiny.en (fast partial transcription)…")
+        log.info("  [3/3] Loading %s (accurate final transcription)…", self.model_name)
+        log.info("        (faster-whisper will download models if not cached — this is the slow step)")
+
+        t0 = time.monotonic()
+        self._recorder = AudioToTextRecorder(
+            # Main model for accurate final transcription.
+            model=self.model_name,
+            # Tiny model for fast partial display updates.
+            realtime_model_type="tiny.en",
+            language="en",
             device=self.device,
             compute_type=self.compute_type,
-        )
-        log.info("Whisper model loaded")
-
-    def transcribe_chunk(self, audio: np.ndarray) -> TranscriptResult | None:
-        """
-        Transcribe a single audio chunk (float32, 16 kHz, mono).
-
-        Returns None if the audio is silent or the model is not loaded.
-        Returns a TranscriptResult dict with the recognised text.
-
-        Note: faster-whisper always returns "final" segments — there are no
-        partial hypotheses. We mark every result as final=True. Partial
-        transcript UX is achieved by displaying results as they arrive.
-        """
-        if self._model is None:
-            log.error("STTEngine.load() must be called before transcribe_chunk()")
-            return None
-
-        # Simple energy gate to avoid transcribing silence (saves CPU).
-        # Threshold raised to 0.01 — 2.5 s windows have higher average energy
-        # than 0.5 s chunks, so a higher bar is needed to skip true silence.
-        rms = float(np.sqrt(np.mean(audio ** 2)))
-        if rms < 0.01:
-            return None
-
-        segments, info = self._model.transcribe(
-            audio,
-            language="en",
-            beam_size=5,
+            input_device_index=self._input_device,
+            # VAD sensitivity — 0.4 balances false positives vs missed speech.
+            silero_sensitivity=0.4,
+            # WebRTC aggressiveness: 0 (least) – 3 (most).  2 suits a
+            # close-talk mic in a moderately noisy church environment.
+            webrtc_sensitivity=2,
+            # How long silence must last before the utterance is considered done.
+            post_speech_silence_duration=0.5,
+            # Ignore clips shorter than this (coughs, mic bumps, etc.).
+            min_length_of_recording=0.5,
+            # Gap between recordings — prevents rapid re-triggering.
+            min_gap_between_recordings=0.1,
+            # Enable the real-time partial-update callback.
+            enable_realtime_transcription=True,
+            # How often the tiny.en model reruns on accumulating audio.
+            realtime_processing_pause=0.15,
+            on_realtime_transcription_update=_on_partial,
+            on_realtime_transcription_stabilized=_on_partial,
             initial_prompt=_BIBLE_PROMPT,
-            hotwords=_HOTWORDS,
-            vad_filter=True,
-            vad_parameters={
-                "min_silence_duration_ms": 300,
-            },
-            condition_on_previous_text=False,
+            # Suppress RealtimeSTT's own console logging; we use our logger.
+            spinner=False,
         )
+        log.info("STT engine ready (%.1f s)", time.monotonic() - t0)
 
-        # Collect all segment texts.
-        texts = [seg.text.strip() for seg in segments if seg.text.strip()]
-        if not texts:
-            return None
-
-        return TranscriptResult(
-            text=" ".join(texts),
-            is_final=True,
-            language=info.language,
-            confidence=getattr(info, "language_probability", 1.0),
+    def start(self) -> None:
+        """Spin up the blocking recorder loop in a daemon thread."""
+        if self._recorder is None:
+            raise RuntimeError("STTEngine.load() must be called before start()")
+        self._running = True
+        self._thread = threading.Thread(
+            target=self._recorder_loop, daemon=True, name="realtime-stt"
         )
+        self._thread.start()
+        log.info("RealtimeSTT recorder thread started")
+
+    def stop(self) -> None:
+        """Signal the recorder to stop and wait for the thread to exit."""
+        self._running = False
+        if self._recorder:
+            try:
+                self._recorder.stop()
+            except Exception:
+                pass
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=3.0)
+        log.info("RealtimeSTT recorder stopped")
+
+    # ── Async generators ──────────────────────────────────────────────────────
+
+    async def partial_updates(self) -> AsyncGenerator[str, None]:
+        """
+        Yields partial transcript strings as they arrive from the tiny.en model.
+        Use for live display in the UI.  These are NOT used for detection.
+        """
+        while self._running:
+            try:
+                text = await asyncio.wait_for(self._partial_queue.get(), timeout=0.5)
+                yield text
+            except asyncio.TimeoutError:
+                continue
+
+    async def final_transcripts(self) -> AsyncGenerator[str, None]:
+        """
+        Yields complete utterances after the speaker pauses.
+        These are accurate full phrases — use for detection engines.
+        """
+        while self._running:
+            try:
+                text = await asyncio.wait_for(self._final_queue.get(), timeout=0.5)
+                yield text
+            except asyncio.TimeoutError:
+                continue
+
+    # ── Internal ──────────────────────────────────────────────────────────────
+
+    def _recorder_loop(self) -> None:
+        """
+        Runs recorder.text() in a tight loop.  recorder.text() blocks until
+        Silero VAD detects end-of-speech, then returns the accurate transcript
+        from the main Whisper model.  Each result is pushed to the final queue.
+        """
+        try:
+            while self._running:
+                text: str = self._recorder.text()
+                if text and text.strip() and self._running:
+                    if self._loop and not self._loop.is_closed():
+                        self._loop.call_soon_threadsafe(
+                            self._final_queue.put_nowait, text.strip()
+                        )
+        except Exception:
+            log.exception("RealtimeSTT recorder loop encountered an error")

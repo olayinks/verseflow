@@ -1,0 +1,131 @@
+Collecting RealtimeSTT
+  Downloading realtimestt-0.3.104-py3-none-any.whl.metadata (30 kB)
+Collecting PyAudio==0.2.14 (from RealtimeSTT)
+  Downloading PyAudio-0.2.14-cp313-cp313-win_amd64.whl.metadata (2.7 kB)
+Collecting faster-whisper==1.1.1 (from RealtimeSTT)
+  Downloading faster_whisper-1.1.1-py3-none-any.whl.metadata (16 kB)
+Collecting pvporcupine==1.9.5 (from RealtimeSTT)
+  Downloading pvporcupine-1.9.5-py3-none-any.whl.metadata (3.8 kB)
+Collecting webrtcvad-wheels==2.0.14 (from RealtimeSTT)
+  Downloading webrtcvad_wheels-2.0.14-cp313-cp313-win_amd64.whl.metadata (5.6 kB)
+Collecting halo==0.0.31 (from RealtimeSTT)
+  Downloading halo-0.0.31.tar.gz (11 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: torch in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from RealtimeSTT) (2.11.0)
+Collecting torchaudio (from RealtimeSTT)
+  Downloading torchaudio-2.11.0-cp313-cp313-win_amd64.whl.metadata (6.9 kB)
+Collecting scipy==1.15.2 (from RealtimeSTT)
+  Downloading scipy-1.15.2-cp313-cp313-win_amd64.whl.metadata (60 kB)
+Collecting openwakeword>=0.4.0 (from RealtimeSTT)
+  Downloading openwakeword-0.6.0-py3-none-any.whl.metadata (29 kB)
+Collecting websockets==15.0.1 (from RealtimeSTT)
+  Downloading websockets-15.0.1-cp313-cp313-win_amd64.whl.metadata (7.0 kB)
+Collecting websocket-client==1.8.0 (from RealtimeSTT)
+  Downloading websocket_client-1.8.0-py3-none-any.whl.metadata (8.0 kB)
+Collecting soundfile==0.13.1 (from RealtimeSTT)
+  Using cached soundfile-0.13.1-py2.py3-none-win_amd64.whl.metadata (16 kB)
+Requirement already satisfied: ctranslate2<5,>=4.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (4.7.1)
+Requirement already satisfied: huggingface-hub>=0.13 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (1.8.0)
+Requirement already satisfied: tokenizers<1,>=0.13 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (0.22.2)
+Requirement already satisfied: onnxruntime<2,>=1.14 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (1.24.4)
+Requirement already satisfied: av>=11 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (17.0.0)
+Requirement already satisfied: tqdm in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from faster-whisper==1.1.1->RealtimeSTT) (4.67.3)
+Collecting log_symbols>=0.0.14 (from halo==0.0.31->RealtimeSTT)
+  Downloading log_symbols-0.0.14-py3-none-any.whl.metadata (523 bytes)
+Collecting spinners>=0.0.24 (from halo==0.0.31->RealtimeSTT)
+  Downloading spinners-0.0.24-py3-none-any.whl.metadata (576 bytes)
+Collecting termcolor>=1.1.0 (from halo==0.0.31->RealtimeSTT)
+  Downloading termcolor-3.3.0-py3-none-any.whl.metadata (6.5 kB)
+Requirement already satisfied: colorama>=0.3.9 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from halo==0.0.31->RealtimeSTT) (0.4.6)
+Collecting six>=1.12.0 (from halo==0.0.31->RealtimeSTT)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting enum34 (from pvporcupine==1.9.5->RealtimeSTT)
+  Downloading enum34-1.1.10-py3-none-any.whl.metadata (1.6 kB)
+Requirement already satisfied: numpy in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from pvporcupine==1.9.5->RealtimeSTT) (2.4.3)
+Requirement already satisfied: cffi>=1.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from soundfile==0.13.1->RealtimeSTT) (2.0.0)
+Requirement already satisfied: setuptools in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from ctranslate2<5,>=4.0->faster-whisper==1.1.1->RealtimeSTT) (81.0.0)
+Requirement already satisfied: pyyaml<7,>=5.3 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from ctranslate2<5,>=4.0->faster-whisper==1.1.1->RealtimeSTT) (6.0.3)
+Requirement already satisfied: flatbuffers in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from onnxruntime<2,>=1.14->faster-whisper==1.1.1->RealtimeSTT) (25.12.19)
+Requirement already satisfied: packaging in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from onnxruntime<2,>=1.14->faster-whisper==1.1.1->RealtimeSTT) (26.0)
+Requirement already satisfied: protobuf in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from onnxruntime<2,>=1.14->faster-whisper==1.1.1->RealtimeSTT) (7.34.1)
+Requirement already satisfied: sympy in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from onnxruntime<2,>=1.14->faster-whisper==1.1.1->RealtimeSTT) (1.14.0)
+Requirement already satisfied: filelock>=3.10.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (3.25.2)
+Requirement already satisfied: fsspec>=2023.5.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (2026.3.0)
+Requirement already satisfied: hf-xet<2.0.0,>=1.4.2 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (1.4.2)
+Requirement already satisfied: httpx<1,>=0.23.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (0.28.1)
+Requirement already satisfied: typer in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (0.24.1)
+Requirement already satisfied: typing-extensions>=4.1.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (4.15.0)
+Requirement already satisfied: anyio in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from httpx<1,>=0.23.0->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (4.13.0)
+Requirement already satisfied: certifi in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from httpx<1,>=0.23.0->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (2026.2.25)
+Requirement already satisfied: httpcore==1.* in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from httpx<1,>=0.23.0->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (1.0.9)
+Requirement already satisfied: idna in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from httpx<1,>=0.23.0->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (3.11)
+Requirement already satisfied: h11>=0.16 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (0.16.0)
+Requirement already satisfied: pycparser in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from cffi>=1.0->soundfile==0.13.1->RealtimeSTT) (3.0)
+Requirement already satisfied: scikit-learn<2,>=1 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from openwakeword>=0.4.0->RealtimeSTT) (1.8.0)
+Collecting requests<3,>=2.0 (from openwakeword>=0.4.0->RealtimeSTT)
+  Using cached requests-2.33.1-py3-none-any.whl.metadata (4.8 kB)
+Collecting charset_normalizer<4,>=2 (from requests<3,>=2.0->openwakeword>=0.4.0->RealtimeSTT)
+  Using cached charset_normalizer-3.4.7-cp313-cp313-win_amd64.whl.metadata (41 kB)
+Collecting urllib3<3,>=1.26 (from requests<3,>=2.0->openwakeword>=0.4.0->RealtimeSTT)
+  Using cached urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+Requirement already satisfied: joblib>=1.3.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from scikit-learn<2,>=1->openwakeword>=0.4.0->RealtimeSTT) (1.5.3)
+Requirement already satisfied: threadpoolctl>=3.2.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from scikit-learn<2,>=1->openwakeword>=0.4.0->RealtimeSTT) (3.6.0)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from sympy->onnxruntime<2,>=1.14->faster-whisper==1.1.1->RealtimeSTT) (1.3.0)
+Requirement already satisfied: networkx>=2.5.1 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from torch->RealtimeSTT) (3.6.1)
+Requirement already satisfied: jinja2 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from torch->RealtimeSTT) (3.1.6)
+Requirement already satisfied: MarkupSafe>=2.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from jinja2->torch->RealtimeSTT) (3.0.3)
+Requirement already satisfied: click>=8.2.1 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (8.3.1)
+Requirement already satisfied: shellingham>=1.3.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (1.5.4)
+Requirement already satisfied: rich>=12.3.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (14.3.3)
+Requirement already satisfied: annotated-doc>=0.0.2 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (0.0.4)
+Requirement already satisfied: markdown-it-py>=2.2.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from rich>=12.3.0->typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (4.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from rich>=12.3.0->typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (2.19.2)
+Requirement already satisfied: mdurl~=0.1 in C:\Users\moses\AppData\Local\Programs\Python\Python313\Lib\site-packages (from markdown-it-py>=2.2.0->rich>=12.3.0->typer->huggingface-hub>=0.13->faster-whisper==1.1.1->RealtimeSTT) (0.1.2)
+Downloading realtimestt-0.3.104-py3-none-any.whl (110 kB)
+Downloading faster_whisper-1.1.1-py3-none-any.whl (1.1 MB)
+   ---------------------------------------- 1.1/1.1 MB 12.1 MB/s  0:00:00
+Downloading pvporcupine-1.9.5-py3-none-any.whl (2.0 MB)
+   ---------------------------------------- 2.0/2.0 MB 15.5 MB/s  0:00:00
+Downloading PyAudio-0.2.14-cp313-cp313-win_amd64.whl (173 kB)
+Downloading scipy-1.15.2-cp313-cp313-win_amd64.whl (41.0 MB)
+   ---------------------------------------- 41.0/41.0 MB 19.3 MB/s  0:00:02
+Using cached soundfile-0.13.1-py2.py3-none-win_amd64.whl (1.0 MB)
+Downloading webrtcvad_wheels-2.0.14-cp313-cp313-win_amd64.whl (19 kB)
+Downloading websocket_client-1.8.0-py3-none-any.whl (58 kB)
+Downloading websockets-15.0.1-cp313-cp313-win_amd64.whl (176 kB)
+Downloading log_symbols-0.0.14-py3-none-any.whl (3.1 kB)
+Downloading openwakeword-0.6.0-py3-none-any.whl (60 kB)
+Using cached requests-2.33.1-py3-none-any.whl (64 kB)
+Using cached charset_normalizer-3.4.7-cp313-cp313-win_amd64.whl (158 kB)
+Using cached urllib3-2.6.3-py3-none-any.whl (131 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Downloading spinners-0.0.24-py3-none-any.whl (5.5 kB)
+Downloading termcolor-3.3.0-py3-none-any.whl (7.7 kB)
+Downloading enum34-1.1.10-py3-none-any.whl (11 kB)
+Downloading torchaudio-2.11.0-cp313-cp313-win_amd64.whl (328 kB)
+Building wheels for collected packages: halo
+  Building wheel for halo (pyproject.toml): started
+  Building wheel for halo (pyproject.toml): finished with status 'done'
+  Created wheel for halo: filename=halo-0.0.31-py3-none-any.whl size=11368 sha256=2d7cb92ce07eb7053900959318f1869d4672ce5f5e8e8d7abea5accaf83af343
+  Stored in directory: c:\users\moses\appdata\local\pip\cache\wheels\3b\34\ba\a01884c0ab3ceca7a9c10ba3d3bacd6e77b357bbb3d63ee8e4
+Successfully built halo
+Installing collected packages: webrtcvad-wheels, torchaudio, spinners, PyAudio, enum34, websockets, websocket-client, urllib3, termcolor, six, scipy, pvporcupine, log_symbols, charset_normalizer, soundfile, requests, halo, openwakeword, faster-whisper, RealtimeSTT
+  Attempting uninstall: websockets
+    Found existing installation: websockets 16.0
+    Uninstalling websockets-16.0:
+      Successfully uninstalled websockets-16.0
+  Attempting uninstall: scipy
+    Found existing installation: scipy 1.17.1
+    Uninstalling scipy-1.17.1:
+      Successfully uninstalled scipy-1.17.1
+  Attempting uninstall: faster-whisper
+    Found existing installation: faster-whisper 1.2.1
+    Uninstalling faster-whisper-1.2.1:
+      Successfully uninstalled faster-whisper-1.2.1
+
+Successfully installed PyAudio-0.2.14 RealtimeSTT-0.3.104 charset_normalizer-3.4.7 enum34-1.1.10 faster-whisper-1.1.1 halo-0.0.31 log_symbols-0.0.14 openwakeword-0.6.0 pvporcupine-1.9.5 requests-2.33.1 scipy-1.15.2 six-1.17.0 soundfile-0.13.1 spinners-0.0.24 termcolor-3.3.0 torchaudio-2.11.0 urllib3-2.6.3 webrtcvad-wheels-2.0.14 websocket-client-1.8.0 websockets-15.0.1
