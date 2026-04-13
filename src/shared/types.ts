@@ -116,6 +116,7 @@ export const IPC = {
   ON_SUGGESTION: 'sidecar:on-suggestion',
   ON_STATUS: 'sidecar:on-status',
   ON_ERROR: 'sidecar:on-error',
+  GET_STATUS: 'sidecar:get-status',
 } as const
 
 /** Result returned by the app:check-launch IPC call. */

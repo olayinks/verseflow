@@ -14,18 +14,38 @@ export function useSidecar(): {
   startListening: () => Promise<void>
   stopListening: () => Promise<void>
 } {
-  const { setStatus, setTranscript, addSuggestion, setListening, setSettings, setSettingsPanelOpen } = useAppStore()
+  const { setStatus, setEngineState, setTranscript, addSuggestion, setListening, setSettings, setSettingsPanelOpen } = useAppStore()
 
   // Subscribe to IPC push events on mount, unsubscribe on unmount.
   useEffect(() => {
     const api = window.verseflow
 
     const unsubs = [
-      api.onStatus((s) => setStatus(s)),
+      api.onStatus((s) => {
+        const payload = s as Record<string, unknown>
+        setStatus(payload)
+        // Set engine state explicitly so it can never be overridden by
+        // a derived value from a different status field.
+        if (payload.state === 'ready')   setEngineState('ready')
+        if (payload.state === 'loading') setEngineState('loading')
+        if (payload.state === 'error')   setEngineState('error')
+      }),
       api.onTranscript((t) => setTranscript(t)),
       api.onSuggestion((s) => addSuggestion(s)),
-      api.onError((e) => setStatus({ connected: false, message: e.message })),
+      api.onError((e) => { setStatus({ connected: false, message: e.message }); setEngineState('error') }),
     ]
+
+    // Re-sync engine state on mount: status messages can arrive before the
+    // renderer's IPC listeners are registered, so we query the last-known
+    // status from the main process and apply it immediately.
+    api.getStatus().then((payload) => {
+      if (payload) {
+        setStatus(payload)
+        if (payload['state'] === 'ready')   setEngineState('ready')
+        if (payload['state'] === 'loading') setEngineState('loading')
+        if (payload['state'] === 'error')   setEngineState('error')
+      }
+    }).catch(console.error)
 
     // Load persisted settings once on mount.
     // Open the settings panel automatically if setup has never been completed,
@@ -38,7 +58,7 @@ export function useSidecar(): {
     }).catch(console.error)
 
     return () => unsubs.forEach((u) => u())
-  }, [setStatus, setTranscript, addSuggestion, setSettings])
+  }, [setStatus, setEngineState, setTranscript, addSuggestion, setSettings])
 
   const startListening = useCallback(async () => {
     await window.verseflow.startListening()

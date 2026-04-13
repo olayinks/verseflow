@@ -29,6 +29,7 @@ export interface VerseFlowAPI {
   onSuggestion: (cb: (suggestion: Suggestion) => void) => Unsubscribe
   onStatus: (cb: (status: { connected: boolean; message: string }) => void) => Unsubscribe
   onError: (cb: (err: { message: string }) => void) => Unsubscribe
+  getStatus: () => Promise<Record<string, unknown> | null>
 }
 
 declare global {

@@ -6,8 +6,18 @@ interface StatusState {
   message: string
 }
 
+/**
+ * Tracks the sidecar's engine lifecycle independently of the WebSocket
+ * connection state so the UI can show a meaningful loading indicator.
+ *
+ *  disconnected → (WS connects) → loading → (engines ready) → ready
+ *                                          → error (on load failure)
+ */
+export type EngineState = 'disconnected' | 'loading' | 'ready' | 'error'
+
 interface AppState {
   status: StatusState
+  engineState: EngineState
   isListening: boolean
   captureMode: CaptureMode
   transcript: TranscriptPayload | null
@@ -17,7 +27,10 @@ interface AppState {
   settingsPanelOpen: boolean
   helpPanelOpen: boolean
 
-  setStatus: (s: StatusState) => void
+  // Accepts the raw payload from either the SidecarManager or the sidecar WS
+  // message and derives engineState from it automatically.
+  setStatus: (s: Record<string, unknown>) => void
+  setEngineState: (s: EngineState) => void
   setListening: (v: boolean) => void
   setCaptureMode: (m: CaptureMode) => void
   setTranscript: (t: TranscriptPayload) => void
@@ -29,8 +42,19 @@ interface AppState {
   setHelpPanelOpen: (v: boolean) => void
 }
 
+function deriveEngineState(payload: Record<string, unknown>): EngineState {
+  if (payload.state === 'ready')   return 'ready'
+  if (payload.state === 'loading') return 'loading'
+  if (payload.state === 'error')   return 'error'
+  // SidecarManager pushes { connected, message } without a state field.
+  // Treat a bare connected=true as "loading" (sidecar connected, engines unknown).
+  if (payload.connected === true)  return 'loading'
+  return 'disconnected'
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
-  status: { connected: false, message: 'Initialising…' },
+  status: { connected: false, message: 'Connecting…' },
+  engineState: 'disconnected',
   isListening: false,
   captureMode: 'sermon',
   transcript: null,
@@ -40,7 +64,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   settingsPanelOpen: false,
   helpPanelOpen: false,
 
-  setStatus: (s) => set({ status: s }),
+  setStatus: (payload) => set({
+    status: {
+      connected: payload.connected === true,
+      message: typeof payload.message === 'string' ? payload.message : '',
+    },
+    engineState: deriveEngineState(payload),
+  }),
+
+  setEngineState: (s) => set({ engineState: s }),
 
   setListening: (v) => {
     set({ isListening: v })

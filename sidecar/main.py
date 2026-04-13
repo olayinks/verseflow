@@ -44,7 +44,6 @@ log = logging.getLogger("verseflow.main")
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ipc.server import WebSocketServer          # noqa: E402
-from audio.capture import AudioCapture          # noqa: E402
 from stt.engine import STTEngine                # noqa: E402
 from analysis.bible_lookup import BibleLookup          # noqa: E402
 from analysis.verse_detector import VerseDetector      # noqa: E402
@@ -135,11 +134,9 @@ REPO_ROOT = Path(__file__).parent.parent
 
 DEFAULT_CONFIG: dict = {
     "port": int(os.environ.get("VERSEFLOW_PORT", 8765)),
-    "whisper_model": "small.en",      # tiny.en | base.en | small.en | medium.en
+    "whisper_model": "base.en",        # tiny.en | base.en | small.en | medium.en
     "whisper_device": "cpu",         # cpu | cuda
     "audio_device": os.environ.get("VERSEFLOW_AUDIO_DEVICE") or None,
-    "sample_rate": 16000,
-    "chunk_seconds": 0.5,
     "bible_index_path": "data/bibles/index.faiss",
     "bible_meta_path": "data/bibles/meta.json",
     "lyrics_index_path": "data/lyrics/index.faiss",
@@ -187,9 +184,12 @@ class VerseFlowSidecar:
     Wires all components together and manages the asyncio event loop.
 
     Data flow:
-        AudioCapture  →  STTEngine  →  [VerseDetector, SemanticBibleEngine,
-                                         SemanticLyricsEngine]
-                      →  WebSocketServer (pushes events to Electron)
+        RealtimeSTT (VAD-driven)  →  [VerseDetector, SemanticBibleEngine,
+                                       SemanticLyricsEngine]
+                                  →  WebSocketServer (pushes events to Electron)
+
+    RealtimeSTT handles its own audio capture and uses Silero VAD to detect
+    speech endpoints, so Whisper only runs on complete utterances.
     """
 
     def __init__(self, config: dict) -> None:
@@ -198,6 +198,7 @@ class VerseFlowSidecar:
         self.stt = STTEngine(
             model_name=config["whisper_model"],
             device=config["whisper_device"],
+            audio_device=config["audio_device"],
         )
         self._bible_lookup = BibleLookup(meta_path=config["bible_meta_path"])
         self.verse_detector = VerseDetector(lookup=self._bible_lookup)
@@ -212,47 +213,104 @@ class VerseFlowSidecar:
             threshold=config["semantic_threshold"],
             enabled=config["lyrics_enabled"],
         )
-        self.audio = AudioCapture(
-            device=config["audio_device"],
-            sample_rate=config["sample_rate"],
-            chunk_seconds=config["chunk_seconds"],
-        )
         self._listening = False
+        self._engines_ready = False
         self._mode = "sermon"
-        # Pipeline tuning — adjusted by set_mode command at runtime.
-        self._buffer_seconds = 2.5
         self._recent_window = 3
 
     async def start(self) -> None:
         log.info("VerseFlow sidecar starting on port %d", self.config["port"])
 
-        # Load engines (may download models on first run).
-        await asyncio.gather(
-            asyncio.to_thread(self.stt.load),
-            asyncio.to_thread(self._bible_lookup.load),
-            asyncio.to_thread(self.semantic_bible.load),
-            asyncio.to_thread(self.semantic_lyrics.load),
-        )
+        # Start the WebSocket server FIRST so Electron can connect immediately
+        # and receive status updates while the heavier engines are loading.
+        # Previously engines loaded before the server started — this worked with
+        # WhisperModel (fast) but breaks with RealtimeSTT which downloads Silero
+        # VAD and tiny.en on first run, exhausting Electron's reconnect window.
+        await self.server.start(on_command=self._handle_command, on_connect=self._handle_connect)
+        log.info("WebSocket ready — waiting for Electron, loading engines in background")
 
-        # Start the WebSocket server.
-        await self.server.start(on_command=self._handle_command)
+        # Load engines in the background; broadcast status so the UI can show
+        # a loading indicator while the user waits.
+        asyncio.create_task(self._load_engines())
 
-        log.info("Sidecar ready — waiting for Electron to connect")
+    async def _load_engines(self) -> None:
+        """
+        Load all AI engines sequentially in the background after the WS server
+        is up.  Each step broadcasts a status message so the UI and console both
+        show exactly what is happening — important because RealtimeSTT downloads
+        Silero VAD and two Whisper models on first run which can take minutes.
+        """
+        async def _step(message: str, fn, *args) -> None:
+            """Broadcast a status update, run fn(*args) in a thread, log timing."""
+            log.info("[load] %s", message)
+            await self.server.broadcast({
+                "type": "status",
+                "payload": {"state": "loading", "message": message},
+            })
+            t0 = asyncio.get_event_loop().time()
+            await asyncio.to_thread(fn, *args)
+            elapsed = asyncio.get_event_loop().time() - t0
+            log.info("[load] done in %.1f s", elapsed)
 
-        # Notify Electron we are up.
-        await self.server.broadcast({
-            "type": "status",
-            "payload": {"connected": True, "message": "Audio engine ready"},
-        })
+        try:
+            loop = asyncio.get_running_loop()
+
+            # STT is first and slowest: Silero VAD + tiny.en + base.en are all
+            # downloaded here on first run.  Log each sub-step from inside load().
+            await _step(
+                "Loading speech recognition (downloading models if needed)…",
+                self.stt.load, loop,
+            )
+            await _step("Loading Bible index…",   self._bible_lookup.load)
+            await _step("Loading verse embeddings…", self.semantic_bible.load)
+            await _step("Loading lyric embeddings…", self.semantic_lyrics.load)
+
+            self._engines_ready = True
+            log.info("[load] All engines ready — VerseFlow is live")
+            await self.server.broadcast({
+                "type": "status",
+                "payload": {"state": "ready", "connected": True, "message": "Ready"},
+            })
+
+        except Exception:
+            log.exception("Engine load failed")
+            await self.server.broadcast({
+                "type": "error",
+                "payload": {"message": "Failed to load engines — check the sidecar log"},
+            })
+
+    async def _handle_connect(self) -> None:
+        """
+        Called every time Electron opens a new WebSocket connection.
+        Re-broadcasts the current engine state so the UI is always accurate,
+        even if Electron reconnected after the initial 'ready' broadcast was sent.
+        """
+        if self._engines_ready:
+            await self.server.broadcast({
+                "type": "status",
+                "payload": {"state": "ready", "connected": True, "message": "Ready"},
+            })
+        else:
+            await self.server.broadcast({
+                "type": "status",
+                "payload": {"state": "loading", "message": "Loading AI engines…"},
+            })
 
     async def _handle_command(self, command: str) -> None:
         """Handle commands sent from Electron (start / stop / set_mode)."""
         if command == "start" and not self._listening:
+            if not self._engines_ready:
+                await self.server.broadcast({
+                    "type": "status",
+                    "payload": {"state": "loading", "message": "Still loading engines, please wait…"},
+                })
+                return
             self._listening = True
+            self.stt.start()
             asyncio.create_task(self._run_audio_pipeline())
         elif command == "stop":
             self._listening = False
-            self.audio.stop()
+            self.stt.stop()
         elif command.startswith("set_mode:"):
             mode = command.split(":", 1)[1]
             self._apply_mode(mode)
@@ -260,65 +318,60 @@ class VerseFlowSidecar:
     def _apply_mode(self, mode: str) -> None:
         self._mode = mode
         if mode == "worship":
-            # Shorter buffer — faster lyric matches; smaller context window.
-            self._buffer_seconds = 1.5
             self._recent_window = 2
         else:
-            # Sermon (default) — longer buffer for better word accuracy on
-            # spoken names and scripture references.
-            self._buffer_seconds = 2.5
             self._recent_window = 3
-        log.info("Capture mode set to '%s' (buffer=%.1fs, window=%d)", mode, self._buffer_seconds, self._recent_window)
+        log.info("Mode set to '%s'", mode)
 
     async def _run_audio_pipeline(self) -> None:
-        """Open the mic, feed audio chunks to STT, push results to Electron."""
-        log.info("Starting audio pipeline")
-        full_transcript = ""
+        """
+        Consume partial and final transcript streams from RealtimeSTT and
+        push results to Electron and the detection engines.
 
-        sample_rate = self.config["sample_rate"]
-        buffer: list = []
+        RealtimeSTT uses Silero VAD to detect speech endpoints, so:
+          - Partial updates  arrive every ~150 ms from the tiny.en model
+            (fast, for live display — marked isFinal=False).
+          - Final transcripts arrive after a natural speech pause from the
+            main Whisper model (complete phrases — used for verse/lyric detection).
+        No manual buffering or chunking is needed here.
+        """
+        log.info("Audio pipeline started (RealtimeSTT)")
+        full_transcript = ""
         recent_chunks: list[str] = []
 
-        async for chunk in self.audio.stream():
-            if not self._listening:
-                break
+        async def _stream_partials() -> None:
+            async for text in self.stt.partial_updates():
+                if not self._listening:
+                    break
+                await self.server.broadcast({
+                    "type": "transcript",
+                    "payload": {
+                        "text": text,
+                        "isFinal": False,
+                        "fullText": full_transcript.strip(),
+                    },
+                })
 
-            buffer.append(chunk)
-            buffered_samples = sum(len(c) for c in buffer)
-            if buffered_samples < self._buffer_seconds * sample_rate:
-                continue
-
-            audio_window = np.concatenate(buffer)
-            buffer.clear()
-
-            # Run STT in a thread (CPU-bound).
-            result = await asyncio.to_thread(self.stt.transcribe_chunk, audio_window)
-            if not result:
-                continue
-
-            is_final = result["is_final"]
-            text = result["text"]
-            if is_final:
+        async def _stream_finals() -> None:
+            nonlocal full_transcript, recent_chunks
+            async for text in self.stt.final_transcripts():
+                if not self._listening:
+                    break
                 full_transcript += " " + text
                 recent_chunks.append(text)
                 if len(recent_chunks) > self._recent_window:
                     recent_chunks.pop(0)
+                await self.server.broadcast({
+                    "type": "transcript",
+                    "payload": {
+                        "text": text,
+                        "isFinal": True,
+                        "fullText": full_transcript.strip(),
+                    },
+                })
+                await self._run_detection(text, " ".join(recent_chunks))
 
-            # Push transcript to renderer.
-            await self.server.broadcast({
-                "type": "transcript",
-                "payload": {
-                    "text": text,
-                    "isFinal": is_final,
-                    "fullText": full_transcript.strip(),
-                },
-            })
-
-            # Only run detection on stable (final) chunks to avoid noise.
-            if is_final and text.strip():
-                recent_text = " ".join(recent_chunks)
-                await self._run_detection(text, recent_text)
-
+        await asyncio.gather(_stream_partials(), _stream_finals())
         log.info("Audio pipeline stopped")
 
     async def _run_detection(self, chunk_text: str, recent_text: str) -> None:
@@ -361,15 +414,18 @@ class VerseFlowSidecar:
             # No lyric search on triggered chunks — the context is clearly biblical.
             return
 
+        # Use the current utterance as the primary query: it is the most
+        # focused signal.  recent_text (last N chunks) provides broader context
+        # but dilutes precision when earlier chunks cover a different topic.
         tasks = []
         if worship_mode:
             if self.config["lyrics_enabled"]:
-                tasks.append(asyncio.to_thread(self.semantic_lyrics.query, recent_text, max_s, threshold))
-            tasks.append(asyncio.to_thread(self.semantic_bible.query, recent_text, max_s, threshold * 1.1))
+                tasks.append(asyncio.to_thread(self.semantic_lyrics.query, chunk_text, max_s, threshold))
+            tasks.append(asyncio.to_thread(self.semantic_bible.query, chunk_text, max_s, threshold * 1.1))
         else:
-            tasks.append(asyncio.to_thread(self.semantic_bible.query, recent_text, max_s, threshold))
+            tasks.append(asyncio.to_thread(self.semantic_bible.query, chunk_text, max_s, threshold))
             if self.config["lyrics_enabled"]:
-                tasks.append(asyncio.to_thread(self.semantic_lyrics.query, recent_text, max_s, threshold))
+                tasks.append(asyncio.to_thread(self.semantic_lyrics.query, chunk_text, max_s, threshold))
 
         results = await asyncio.gather(*tasks)
 
@@ -387,7 +443,7 @@ class VerseFlowSidecar:
 
     async def shutdown(self) -> None:
         self._listening = False
-        self.audio.stop()
+        self.stt.stop()
         await self.server.stop()
         log.info("Sidecar shut down cleanly")
 

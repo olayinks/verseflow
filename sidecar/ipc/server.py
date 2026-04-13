@@ -26,6 +26,7 @@ from websockets.server import WebSocketServerProtocol
 log = logging.getLogger("verseflow.ipc")
 
 CommandHandler = Callable[[str], Awaitable[None]]
+ConnectHandler = Callable[[], Awaitable[None]]
 
 
 class WebSocketServer:
@@ -34,11 +35,13 @@ class WebSocketServer:
         self._client: WebSocketServerProtocol | None = None
         self._server: websockets.WebSocketServer | None = None
         self._on_command: CommandHandler | None = None
+        self._on_connect: ConnectHandler | None = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    async def start(self, on_command: CommandHandler) -> None:
+    async def start(self, on_command: CommandHandler, on_connect: ConnectHandler | None = None) -> None:
         self._on_command = on_command
+        self._on_connect = on_connect
         self._server = await websockets.serve(
             self._handler,
             host="127.0.0.1",
@@ -75,6 +78,11 @@ class WebSocketServer:
 
         self._client = ws
         log.info("Electron connected from %s", ws.remote_address)
+
+        # Let the sidecar re-send current engine state so Electron always gets
+        # accurate status even if it reconnected after the initial ready broadcast.
+        if self._on_connect:
+            await self._on_connect()
 
         try:
             async for raw in ws:

@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // src/renderer/src/components/StatusBar.tsx
-// Shows sidecar connection status + start/stop button.
+// Shows sidecar connection / engine-load state + start/stop button.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Mic, Radio } from 'lucide-react'
+import { Loader2, Mic, Radio, WifiOff } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAppStore } from '../store'
+import type { EngineState } from '../store'
 import type { CaptureMode } from '@shared/types'
 
 interface Props {
@@ -18,10 +19,36 @@ const MODES: { value: CaptureMode; label: string }[] = [
   { value: 'worship', label: 'Worship' },
 ]
 
+// ── Status dot ────────────────────────────────────────────────────────────────
+
+function StatusDot({ state }: { state: EngineState }): React.ReactElement {
+  return (
+    <span
+      className={clsx('size-2 rounded-full shrink-0', {
+        'bg-zinc-600':                                   state === 'disconnected',
+        'bg-amber-400 animate-pulse shadow-[0_0_6px_theme(colors.amber.400)]': state === 'loading',
+        'bg-emerald-400 shadow-[0_0_6px_theme(colors.emerald.400)]':           state === 'ready',
+        'bg-rose-500 shadow-[0_0_6px_theme(colors.rose.500)]':                 state === 'error',
+      })}
+    />
+  )
+}
+
+// ── Loading bar shown while engines initialise ─────────────────────────────
+
+function LoadingBar(): React.ReactElement {
+  return <div className="h-0.5 w-full bg-amber-400/50 animate-pulse" />
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function StatusBar({ onStart, onStop }: Props): React.ReactElement {
-  const { status, isListening, captureMode, setCaptureMode } = useAppStore()
+  const { status, engineState, isListening, captureMode, setCaptureMode } = useAppStore()
+
+  const canListen = engineState === 'ready'
 
   const handleToggle = (): void => {
+    if (!canListen) return
     if (isListening) {
       onStop().catch(console.error)
     } else {
@@ -36,23 +63,38 @@ export function StatusBar({ onStart, onStop }: Props): React.ReactElement {
 
   return (
     <div className="flex flex-col border-b border-[var(--color-glass-border)]">
-      {/* Top row: connection + mic button */}
+      {/* Top row: status dot + message + mic button */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-        <span
-          className={clsx(
-            'size-2 rounded-full shrink-0',
-            status.connected ? 'bg-emerald-400 shadow-[0_0_6px_theme(colors.emerald.400)]' : 'bg-zinc-500',
+        <StatusDot state={engineState} />
+
+        <span className="flex items-center gap-1.5 flex-1 text-xs truncate">
+          {engineState === 'loading' && (
+            <Loader2 size={11} className="shrink-0 text-amber-400 animate-spin" />
           )}
-        />
-        <span className="flex-1 text-xs text-zinc-400 truncate">{status.message}</span>
+          {engineState === 'disconnected' && (
+            <WifiOff size={11} className="shrink-0 text-zinc-500" />
+          )}
+          <span
+            className={clsx('truncate', {
+              'text-zinc-400':  engineState === 'ready' || engineState === 'disconnected',
+              'text-amber-300': engineState === 'loading',
+              'text-rose-400':  engineState === 'error',
+            })}
+          >
+            {status.message}
+          </span>
+        </span>
+
         <button
           type="button"
           onClick={handleToggle}
+          disabled={!canListen}
+          title={!canListen ? 'Waiting for engines to load…' : undefined}
           className={clsx(
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-            isListening
-              ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
-              : 'bg-brand-500/20 text-brand-300 hover:bg-brand-500/30',
+            !canListen && 'opacity-40 cursor-not-allowed',
+            canListen && isListening && 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30',
+            canListen && !isListening && 'bg-brand-500/20 text-brand-300 hover:bg-brand-500/30',
           )}
         >
           {isListening ? (
@@ -68,6 +110,9 @@ export function StatusBar({ onStart, onStop }: Props): React.ReactElement {
           )}
         </button>
       </div>
+
+      {/* Indeterminate progress bar while engines load */}
+      {engineState === 'loading' && <LoadingBar />}
 
       {/* Mode toggle pill */}
       <div className="flex items-center px-4 pb-2.5">
