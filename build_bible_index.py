@@ -63,8 +63,10 @@ KJV_URL = (
     "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_kjv.json"
 )
 
-# Embedding model — same one the sidecar uses so vectors are compatible.
-EMBED_MODEL = "all-MiniLM-L6-v2"
+# Embedding model — MUST match the model in sidecar/analysis/semantic_base.py.
+# multi-qa-MiniLM-L6-cos-v1 is optimised for asymmetric retrieval (short query
+# vs longer document), which matches our use-case of speech snippets vs verses.
+EMBED_MODEL = "multi-qa-MiniLM-L6-cos-v1"
 
 # How many verses to embed in one batch (tune down if you run out of RAM).
 BATCH_SIZE = 256

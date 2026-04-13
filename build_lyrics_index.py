@@ -87,7 +87,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 META_PATH = OUT_DIR / "meta.json"
 INDEX_PATH = OUT_DIR / "index.faiss"
 
-EMBED_MODEL = "all-MiniLM-L6-v2"
+EMBED_MODEL = "multi-qa-MiniLM-L6-cos-v1"
 BATCH_SIZE = 256
 
 
